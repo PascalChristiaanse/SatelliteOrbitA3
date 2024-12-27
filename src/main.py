@@ -64,6 +64,24 @@ def main():
     orbit_pltr.add_orbit(ref_sol[:, :-3], name="reference", color="blue")
     # orbit_pltr.plot()
 
+    # Part A
+    # Define covariance matrices
+    P_yy = np.array([[9, 0, 0], [0, 9, 0], [0, 0, 9]])
+    P_xx = np.array(
+        [
+            [4, 0, 0, 0.14, 0, 0],
+            [0, 4, 0, 0, 0.14, 0],
+            [0, 0, 4, 0, 0, 0.14],
+            [0.14, 0, 0, 0.01, 0, 0],
+            [0, 0.14, 0, 0, 0.01, 0],
+            [0, 0, 0.14, 0, 0, 0.01],
+        ]
+    )
+
+    print("P_yy", P_yy)
+    print("P_xx", P_xx)
+
+    
 
 if __name__ == "__main__":
     main()
