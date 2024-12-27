@@ -81,7 +81,28 @@ def main():
     print("P_yy", P_yy)
     print("P_xx", P_xx)
 
-    
+    # Part B
+    # Derivatives
+    # fmt: off
+    mu = 3.986e5
+    U = lambda r: mu / jnp.linalg.norm(r)  # noqa: E731
+    f = lambda x: jnp.array([x[3], x[4], x[5], *grad(U)(x[0:3])])  # noqa: E731 also x_dot
+    F = lambda x: jacobian(f)(x)  # noqa: E731
+    x_dot = f  # noqa: E731
+    phi_dot = lambda x, phi: F(x) @ phi  # noqa: E731
+
+    # Initial values
+    x_0 = jnp.array([data.rx[0], data.ry[0], data.rz[0], data.vx[0], data.vy[0], data.vz[0]])
+    phi_00 = jnp.identity(6)
+
+    g_0 = jnp.concat([x_0, jnp.reshape(phi_00, [36])])
+    g_dot = lambda t, g: jnp.concat([x_dot(g[0:6]), jnp.reshape(phi_dot(g[0:6], jnp.reshape(g[6:], [6, 6])), [36])])  # noqa: E731
+    # fmt: on
+
+    solution = solve_ivp(g_dot, (data.t[0], data.t[1]), g_0, method="RK45", t_eval=[data.t[0], data.t[1]], atol=1e-6)
+    print(solution)
+    print(array_to_latex_matrix(jnp.round(jnp.reshape(solution.y[6:, 1],[6,6]), 10)))
+
 
 if __name__ == "__main__":
     main()
