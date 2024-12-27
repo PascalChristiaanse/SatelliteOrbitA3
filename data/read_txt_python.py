@@ -14,8 +14,6 @@ class Data:
 
         self.PRN_ID = np.loadtxt('data/PRN_ID.txt') # PRN ID of tracked GPS satellites
 
-        self.clk_gps = np.loadtxt('data/clk_gps.txt') # clock correction for GPS sats (transmitters) - s
-
         self.rx_gps = np.loadtxt('data/rx_gps.txt') # GPS satellite positions (transmitters) - km
         self.ry_gps = np.loadtxt('data/ry_gps.txt')
         self.rz_gps = np.loadtxt('data/rz_gps.txt')
