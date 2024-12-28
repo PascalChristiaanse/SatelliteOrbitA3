@@ -1,5 +1,8 @@
 """_summary_"""
 
+# Formatter settings
+# ruff: noqa: E731, F841
+
 # Add root folder
 import sys
 import os
@@ -78,28 +81,46 @@ def main():
         ]
     )
 
-    print("P_yy", P_yy)
-    print("P_xx", P_xx)
+    # print("P_yy", P_yy)
+    # print("P_xx", P_xx)
 
     # Part B
-    # Derivatives
+
     # fmt: off
+    # Constants (should really be in a vector P but not worth the effort as we're only using mu) note to resolve: solve_ivp can use the "args" parameter to pass p to the functions!
     mu = 3.986e5
-    U = lambda r: mu / jnp.linalg.norm(r)  # noqa: E731
-    f = lambda x: jnp.array([x[3], x[4], x[5], *grad(U)(x[0:3])])  # noqa: E731 also x_dot
-    F = lambda x: jacobian(f)(x)  # noqa: E731
-    x_dot = f  # noqa: E731
-    phi_dot = lambda x, phi: F(x) @ phi  # noqa: E731
+    # Functions
+    U = lambda r: mu / jnp.linalg.norm(r)
+    f = lambda x: jnp.array([x[3], x[4], x[5], *grad(U)(x[0:3])])  # also x_dot
+
+    # Derivatives    
+    x_dot = f
+    F_x = lambda x: jacobian(f)(x) # jacobian of f wrt x
+    F_p = lambda x: jnp.array([0,0,0,-x[0]/norm(x[0:3]),-x[1]/norm(x[0:3]),-x[2]/norm(x[0:3])]).reshape(-1,1) # noqa: E731
+    phi_dot = lambda x, phi: F_x(x) @ phi  
+    S_dot = lambda x, S: F_x(x) @ S + F_p(x) # really part of C but okay
 
     # Initial values
     x_0 = jnp.array([data.rx[0], data.ry[0], data.rz[0], data.vx[0], data.vy[0], data.vz[0]])
     phi_00 = jnp.identity(6)
+    S_00 = jnp.zeros([6,1])
 
-    g_0 = jnp.concat([x_0, jnp.reshape(phi_00, [36])])
-    g_dot = lambda t, g: jnp.concat([x_dot(g[0:6]), jnp.reshape(phi_dot(g[0:6], jnp.reshape(g[6:], [6, 6])), [36])])  # noqa: E731
+    g_0 = jnp.concat([x_0, jnp.reshape(phi_00, [36]), jnp.reshape(S_00, [6])])
+    g_dot = lambda t, g: jnp.concat([
+        x_dot(g[0:6]), 
+        jnp.reshape(phi_dot(g[0:6], jnp.reshape(g[6:42], [6, 6])), [36]),
+        jnp.reshape(S_dot(g[0:6], jnp.reshape(g[42:48], [6, 1])), [6]),
+        ])  
     # fmt: on
 
-    solution = solve_ivp(g_dot, (data.t[0], data.t[1]), g_0, method="RK45", t_eval=[data.t[0], data.t[1]], atol=1e-6)
+    solution = solve_ivp(
+        g_dot,
+        (data.t[0], data.t[1]),
+        g_0,
+        method="RK45",
+        t_eval=[data.t[0], data.t[1]],
+        atol=1e-6,
+    )
     print(solution)
     print(array_to_latex_matrix(jnp.round(jnp.reshape(solution.y[6:, 1],[6,6]), 10)))
 
