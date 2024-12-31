@@ -123,7 +123,7 @@ def main():
     # Functions
     h = lambda x, u: norm(x[0:3] - u, axis=0).reshape(-1, 1)
     # Derivatives
-    g_dot_g = (
+    g_dot = (
         lambda t, g: jnp.concat(  # No sensitivity matrix
             [
                 x_dot(g[0:6]),
@@ -134,44 +134,95 @@ def main():
     H_xn = lambda x, u: jnp.squeeze(jacobian(h)(x, u))
 
     # Initial conditions
-    x_bar = list([jnp.array([data.rx[0], data.ry[0], data.rz[0], data.vx[0], data.vy[0], data.vz[0]]).reshape(-1,1)])
-    
-    z_bar = jnp.array(data.CA_range).reshape(100,-1,1)
+    x_bar = list(
+        [
+            jnp.array(
+                [data.rx[0], data.ry[0], data.rz[0], data.vx[0], data.vy[0], data.vz[0]]
+            ).reshape(-1, 1)
+        ]
+    )
+
+    z_bar = jnp.array(data.CA_range).reshape(100, -1, 1)
     z_bar = [z_bar[i][~jnp.all(z_bar[i] == 0, axis=1)] for i in range(z_bar.shape[0])]
     # print(z_bar[0][0])
-       
-    r_gps = jnp.array([jnp.column_stack([data.rx_gps, data.ry_gps, data.rz_gps])]).reshape(100,3,-1)
+
+    r_gps = jnp.array(
+        [jnp.column_stack([data.rx_gps, data.ry_gps, data.rz_gps])]
+    ).reshape(100, 3, -1)
     r_gps = [r_gps[i][:, ~np.all(r_gps[i] == 0, axis=0)] for i in range(r_gps.shape[0])]
     # print(r_gps[0][:,0])
+    sigma_a = 0.5
+    sigma_b = 0.1
+    Q = jnp.diag(jnp.array([*[pow(sigma_a,2)]*3, *[pow(sigma_b, 2)]*3]))
+    P = list([jnp.array(P_xx)+Q])
+    R = list([0.009 * jnp.identity(len(z_bar[0]))])
 
-    P = list([jnp.array(P_xx)])
-    R = list([0.009*jnp.identity(len(z_bar[0]))])
-    
-    dz_bar = list([z_bar[0]-h(x_bar[0], r_gps[0])])
+    dz_bar = list([z_bar[0] - h(x_bar[0], r_gps[0])])
     H = list([H_xn(x_bar[0], r_gps[0])])
     K = list([P[0] @ H[0].T @ inv(H[0] @ P[0] @ H[0].T + R[0])])
     x_hat = list([x_bar[0] + K[0] @ dz_bar[0]])
     P_hat = list([(jnp.identity(6) - K[0] @ H[0]) @ P[0]])
-    
-    # Propagation loop
-    for i in range(1):
-        print(i)
-    
-    return
-    # print(h(x_bar[0], len(z_bar)))
 
     # Propagation loop
     # for i in range(len(data.t) - 1):
-    #     phi_00 = jnp.identity(6)
-    #     g_0 = jnp.concat([x_hat, jnp.reshape(phi_00, [36])])
-    #     solution = solve_ivp(
-    #     g_dot,
-    #     (data.t[i], data.t[i + 1]),
-    #     g_0,
-    #     method="RK45",
-    #     t_eval=[data.t[i + 1]],
-    #     atol=1e-6,
-    # )
+    for i in range(1):
+        print("Time: ", i)
+
+        phi_ii = jnp.identity(6)
+        g_i = jnp.concat([x_hat[i].reshape([6]), jnp.reshape(phi_ii, [36])])
+        g_ip1 = solve_ivp(
+            g_dot,
+            (data.t[i], data.t[i + 1]),
+            g_i,
+            method="RK45",
+            t_eval=[data.t[i + 1]],
+            atol=1e-3,
+        )
+        print(g_ip1)
+        x_bar.append(jnp.array([g_ip1.y[0:6]]).reshape([6, 1]))
+        phi_ip1i = jnp.array(g_ip1.y[6:]).reshape([6, 6])
+
+        P.append(phi_ip1i @ P_hat[i] @ phi_ip1i.T + Q)
+
+        # Apply corrections
+        # So nothing
+
+        # Update with observations
+        R.append(0.009 * jnp.identity(len(z_bar[i + 1])))
+        H.append(H_xn(x_bar[i + 1], r_gps[i + 1]))
+        dz_bar.append(z_bar[i + 1] - h(x_bar[i + 1], r_gps[i + 1]))
+        K.append(
+            P[i + 1] @ H[i + 1].T @ inv(H[i + 1] @ P[i + 1] @ H[i + 1].T + R[i + 1])
+        )
+        x_hat.append(x_bar[i + 1] + K[i + 1] @ dz_bar[i + 1])
+        P_hat.append((jnp.identity(6) - K[i + 1] @ H[i + 1]) @ P[i + 1])
+
+    orbit_pltr.add_orbit(
+        [np.array(jnp.squeeze(x[:-3])) for x in x_hat],
+        name="Extended kalman sol",
+        color="green",
+    )
+    orbit_pltr.plot()
+
+    from ResidualPlotter import ResidualPlotter
+
+    print(
+        1000
+        * np.linalg.norm(
+            ref_sol[0, :-3] - [np.array(jnp.squeeze(x[:-3])) for x in x_hat][0]
+        )
+    )
+    residual = ResidualPlotter()
+    residual.add_line_plot(
+        data.t - data.t[0],
+        1000
+        * np.linalg.norm(
+            ref_sol[:, :-3] - [np.array(jnp.squeeze(x[:-3])) for x in x_hat], axis=1
+        ),
+        name="Reference vs extended kalman",
+        color="blue",
+    )
+    residual.plot()
 
 
 if __name__ == "__main__":
