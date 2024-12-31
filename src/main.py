@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../"
 import numpy as np
 import jax.numpy as jnp
 import jax
-from jax import grad, jacobian
+from jax import grad, jacobian, jit
 from jax.numpy.linalg import norm, inv
 from jax.numpy import pow
 
@@ -43,6 +43,46 @@ def array_to_latex_matrix(arr):
 
     return latex_str
 
+mu = 3.986e5
+
+@jit
+def U(r):
+    """Optimized potential energy calculation"""
+    return mu / norm(r)
+
+@jit
+def f(x):
+    """Optimized state derivative calculation"""
+    r = x[0:3]
+    r_norm = norm(r)
+    # Compute acceleration directly instead of using grad(U)
+    acc = -mu * r / (r_norm ** 3)
+    return jnp.array([x[3], x[4], x[5], acc[0], acc[1], acc[2]])
+
+@jit
+def F_x(x):
+    """Optimized Jacobian calculation"""
+    r = x[0:3]
+    r_norm = norm(r)
+    r_norm_cubed = r_norm ** 3
+    r_norm_fifth = r_norm ** 5
+    
+    # Manually compute the Jacobian matrix
+    zeros = jnp.zeros((3, 3))
+    identity = jnp.eye(3)
+    
+    # Compute gravitational acceleration derivatives
+    common_term = 3 * mu / r_norm_fifth
+    grad_g = jnp.zeros((3, 3))
+    for i in range(3):
+        for j in range(3):
+            if i == j:
+                grad_g = grad_g.at[i, j].set(-mu / r_norm_cubed + common_term * r[i] * r[j])
+            else:
+                grad_g = grad_g.at[i, j].set(common_term * r[i] * r[j])
+    
+    # Combine into full Jacobian
+    return jnp.block([[zeros, identity], [grad_g, zeros]])
 
 def main():
     data = Data()
@@ -91,14 +131,21 @@ def main():
     # Constants (should really be in a vector P but not worth the effort as we're only using mu) note to resolve: solve_ivp can use the "args" parameter to pass p to the functions!
     mu = 3.986e5
     # Functions
-    U = lambda r: mu / jnp.linalg.norm(r)
-    f = lambda x: jnp.array([x[3], x[4], x[5], *grad(U)(x[0:3])])  # also x_dot
+    # U = lambda r: mu / jnp.linalg.norm(r)
+    # f = lambda x: jnp.array([x[3], x[4], x[5], *grad(U)(x[0:3])])  # also x_dot
 
 
     # Derivatives    
     x_dot = f
-    F_x = lambda x: jacobian(f)(x) # jacobian of f wrt x
+    # F_x = lambda x: jax.jacfwd(f)(x)
     F_p = lambda x: jnp.array([0,0,0,-x[0]/norm(x[0:3]),-x[1]/norm(x[0:3]),-x[2]/norm(x[0:3])]).reshape(-1,1) # noqa: E731
+    
+    # x_bar_0_B = jnp.array([data.rx[0], data.ry[0], data.rz[0], data.vx[0], data.vy[0], data.vz[0]])
+    # import timeit
+    # execution_time = timeit.timeit(lambda: F_x(x_bar_0_B), number=100000)  # Run 100 iterations
+    # print(f"Time taken for 100 iterations: {execution_time:.6f} seconds")
+    # return
+    
     phi_dot = lambda x, phi: F_x(x) @ phi  
     S_dot = lambda x, S: F_x(x) @ S + F_p(x) # really part of C but okay
     g_dot_B = lambda t, g: jnp.concat([
@@ -151,8 +198,8 @@ def main():
     ).reshape(100, 3, -1)
     r_gps = [r_gps[i][:, ~np.all(r_gps[i] == 0, axis=0)] for i in range(r_gps.shape[0])]
     # print(r_gps[0][:,0])
-    sigma_a = 0.5
-    sigma_b = 0.1
+    sigma_a = 1 # these look like random guesses but i tried 5 orders of magnitude. This is honestly just the best one  i could find
+    sigma_b = 1
     Q = jnp.diag(jnp.array([*[pow(sigma_a,2)]*3, *[pow(sigma_b, 2)]*3]))
     P = list([jnp.array(P_xx)+Q])
     R = list([0.009 * jnp.identity(len(z_bar[0]))])
@@ -164,9 +211,9 @@ def main():
     P_hat = list([(jnp.identity(6) - K[0] @ H[0]) @ P[0]])
 
     # Propagation loop
-    # for i in range(len(data.t) - 1):
-    for i in range(1):
-        print("Time: ", i)
+    for i in range(len(data.t) - 1):
+    # for i in range(10):
+        # print("Time: ", i)
 
         phi_ii = jnp.identity(6)
         g_i = jnp.concat([x_hat[i].reshape([6]), jnp.reshape(phi_ii, [36])])
@@ -178,7 +225,6 @@ def main():
             t_eval=[data.t[i + 1]],
             atol=1e-3,
         )
-        print(g_ip1)
         x_bar.append(jnp.array([g_ip1.y[0:6]]).reshape([6, 1]))
         phi_ip1i = jnp.array(g_ip1.y[6:]).reshape([6, 6])
 
@@ -202,16 +248,10 @@ def main():
         name="Extended kalman sol",
         color="green",
     )
-    orbit_pltr.plot()
+    # orbit_pltr.plot()
 
     from ResidualPlotter import ResidualPlotter
 
-    print(
-        1000
-        * np.linalg.norm(
-            ref_sol[0, :-3] - [np.array(jnp.squeeze(x[:-3])) for x in x_hat][0]
-        )
-    )
     residual = ResidualPlotter()
     residual.add_line_plot(
         data.t - data.t[0],
@@ -222,8 +262,14 @@ def main():
         name="Reference vs extended kalman",
         color="blue",
     )
-    residual.plot()
+    # residual.plot()
 
 
 if __name__ == "__main__":
     main()
+    # import timeit
+    # num = 20
+    # time_f = timeit.timeit(lambda: main(), number=num)
+    # print(f"Time for main(): {time_f/num:.6f} seconds")
+
+
