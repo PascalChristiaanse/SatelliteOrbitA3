@@ -29,19 +29,31 @@ from data.read_txt_python import Data
 from OrbitPlotter import OrbitPlotter
 
 
-def array_to_latex_matrix(arr):
-    # Start the LaTeX matrix environment
-    latex_str = "\\begin{bmatrix}\n"
+def array_to_latex_matrix(arr, signif=10):
+    """
+    Convert a NumPy array to a LaTeX matrix with specified significant digits.
+    
+    Parameters:
+    array (numpy.ndarray): The input NumPy array.
+    significant_digits (int): Number of significant digits to format the numbers.
+    
+    Returns:
+    str: A string representing the LaTeX matrix.
+    """
+    # if not isinstance(arr, np.ndarray):
+        # raise ValueError("Input must be a NumPy array.")
 
-    # Iterate over the rows of the array
+    # Format the array into a LaTeX-compatible string
+    formatter = f"{{:.{signif}g}}"
+    rows = []
     for row in arr:
-        # Join the elements of the row with ' & ' and append to the LaTeX string
-        latex_str += " & ".join(map(str, row)) + " \\\\\n"
-
-    # End the matrix environment
-    latex_str += "\\end{bmatrix}"
-
-    return latex_str
+        formatted_row = " & ".join([formatter.format(num) for num in row])
+        rows.append(formatted_row)
+    matrix_body = " \\\\\n".join(rows)
+    
+    # Wrap in LaTeX matrix environment
+    latex_matrix = f"\\begin{{bmatrix}}\n{matrix_body}\n\\end{{bmatrix}}"
+    return latex_matrix
 
 mu = 3.986e5
 
