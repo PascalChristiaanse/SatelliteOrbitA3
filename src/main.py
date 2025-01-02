@@ -32,11 +32,11 @@ from OrbitPlotter import OrbitPlotter
 def array_to_latex_matrix(arr, signif=10):
     """
     Convert a NumPy array to a LaTeX matrix with specified significant digits.
-    
+
     Parameters:
     array (numpy.ndarray): The input NumPy array.
     significant_digits (int): Number of significant digits to format the numbers.
-    
+
     Returns:
     str: A string representing the LaTeX matrix.
     """
@@ -48,10 +48,11 @@ def array_to_latex_matrix(arr, signif=10):
         formatted_row = " & ".join([formatter.format(num) for num in row])
         rows.append(formatted_row)
     matrix_body = " \\\\\n".join(rows)
-    
+
     # Wrap in LaTeX matrix environment
     latex_matrix = f"\\begin{{bmatrix}}\n{matrix_body}\n\\end{{bmatrix}}"
     return latex_matrix
+
 
 mu = 3.986e5
 omg_e = 7.292115e-5  # rad/s
@@ -61,6 +62,7 @@ omg_e = 7.292115e-5  # rad/s
 def U(r):
     """Optimized potential energy calculation"""
     return mu / norm(r)
+
 
 @jit
 def f(x):
@@ -193,7 +195,7 @@ def main():
 
     # Propagation loop
     for i in range(len(data.t) - 1):
-    # for i in range(10):
+        # for i in range(10):
         # print("Time: ", i)
 
         phi_ii = jnp.identity(6)
@@ -287,5 +289,3 @@ if __name__ == "__main__":
     # num = 20
     # time_f = timeit.timeit(lambda: main(), number=num)
     # print(f"Time for main(): {time_f/num:.6f} seconds")
-
-
