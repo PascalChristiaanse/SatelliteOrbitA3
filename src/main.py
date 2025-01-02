@@ -243,7 +243,42 @@ def main():
         name="Reference vs extended kalman",
         color="blue",
     )
+    residual.add_line_plot(
+        data.t - data.t[0],
+        1000
+        * np.linalg.norm(
+            ref_sol[:, -3:] - [np.array(jnp.squeeze(x[-3:])) for x in x_hat], axis=1
+        ),
+        name="Velocity difference",
+        color="green",
+        secondary_y=True,
+    )
     # residual.plot()
+
+    print(
+        "Deltas epoch 9 - Position: ",
+        f"{1000 * norm(ref_sol[9][0:3] - x_hat[9][0:3].reshape(3)):.10g}",
+        " [m],",
+        "Velocity:",
+        f"{1000 * norm(ref_sol[9][3:6] - x_hat[9][3:6].reshape(3)):.10g}",
+        " [m/s]",
+    )
+    print(
+        "Deltas epoch 19 - Position: ",
+        f"{1000 * norm(ref_sol[19][0:3] - x_hat[19][0:3].reshape(3)):.10g}",
+        " [m],",
+        "Velocity:",
+        f"{1000 * norm(ref_sol[19][3:6] - x_hat[19][3:6].reshape(3)):.10g}",
+        " [m/s]",
+    )
+    print(
+        "Deltas epoch 29 - Position: ",
+        f"{1000 * norm(ref_sol[29][0:3] - x_hat[29][0:3].reshape(3)):.10g}",
+        " [m],",
+        "Velocity:",
+        f"{1000 * norm(ref_sol[29][3:6] - x_hat[29][3:6].reshape(3)):.10g}",
+        " [m/s]",
+    )
 
 
 if __name__ == "__main__":
