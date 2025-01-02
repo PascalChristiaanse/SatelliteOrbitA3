@@ -40,8 +40,6 @@ def array_to_latex_matrix(arr, signif=10):
     Returns:
     str: A string representing the LaTeX matrix.
     """
-    # if not isinstance(arr, np.ndarray):
-        # raise ValueError("Input must be a NumPy array.")
 
     # Format the array into a LaTeX-compatible string
     formatter = f"{{:.{signif}g}}"
@@ -56,6 +54,8 @@ def array_to_latex_matrix(arr, signif=10):
     return latex_matrix
 
 mu = 3.986e5
+omg_e = 7.292115e-5  # rad/s
+
 
 @jit
 def U(r):
@@ -66,35 +66,14 @@ def U(r):
 def f(x):
     """Optimized state derivative calculation"""
     r = x[0:3]
+    v = x[3:6]
     r_norm = norm(r)
+    omg = jnp.array([0, 0, omg_e])
     # Compute acceleration directly instead of using grad(U)
-    acc = -mu * r / (r_norm ** 3)
-    return jnp.array([x[3], x[4], x[5], acc[0], acc[1], acc[2]])
+    acc = -mu * r / (r_norm**3)
+    acc_p = acc - 2 * jnp.cross(omg, v) - jnp.cross(omg, jnp.cross(omg, r))
+    return jnp.array([x[3], x[4], x[5], acc_p[0], acc_p[1], acc_p[2]])
 
-@jit
-def F_x(x):
-    """Optimized Jacobian calculation"""
-    r = x[0:3]
-    r_norm = norm(r)
-    r_norm_cubed = r_norm ** 3
-    r_norm_fifth = r_norm ** 5
-    
-    # Manually compute the Jacobian matrix
-    zeros = jnp.zeros((3, 3))
-    identity = jnp.eye(3)
-    
-    # Compute gravitational acceleration derivatives
-    common_term = 3 * mu / r_norm_fifth
-    grad_g = jnp.zeros((3, 3))
-    for i in range(3):
-        for j in range(3):
-            if i == j:
-                grad_g = grad_g.at[i, j].set(-mu / r_norm_cubed + common_term * r[i] * r[j])
-            else:
-                grad_g = grad_g.at[i, j].set(common_term * r[i] * r[j])
-    
-    # Combine into full Jacobian
-    return jnp.block([[zeros, identity], [grad_g, zeros]])
 
 def main():
     data = Data()
@@ -141,23 +120,12 @@ def main():
     # fmt: off
 
     # Constants (should really be in a vector P but not worth the effort as we're only using mu) note to resolve: solve_ivp can use the "args" parameter to pass p to the functions!
-    mu = 3.986e5
-    # Functions
-    # U = lambda r: mu / jnp.linalg.norm(r)
-    # f = lambda x: jnp.array([x[3], x[4], x[5], *grad(U)(x[0:3])])  # also x_dot
-
 
     # Derivatives    
     x_dot = f
-    # F_x = lambda x: jax.jacfwd(f)(x)
+    F_x = lambda x: jax.jacfwd(f)(x)
     F_p = lambda x: jnp.array([0,0,0,-x[0]/norm(x[0:3]),-x[1]/norm(x[0:3]),-x[2]/norm(x[0:3])]).reshape(-1,1) # noqa: E731
-    
-    # x_bar_0_B = jnp.array([data.rx[0], data.ry[0], data.rz[0], data.vx[0], data.vy[0], data.vz[0]])
-    # import timeit
-    # execution_time = timeit.timeit(lambda: F_x(x_bar_0_B), number=100000)  # Run 100 iterations
-    # print(f"Time taken for 100 iterations: {execution_time:.6f} seconds")
-    # return
-    
+
     phi_dot = lambda x, phi: F_x(x) @ phi  
     S_dot = lambda x, S: F_x(x) @ S + F_p(x) # really part of C but okay
     g_dot_B = lambda t, g: jnp.concat([
@@ -173,7 +141,8 @@ def main():
     g_0_B = jnp.concat([x_bar_0_B, jnp.reshape(phi_00_B, [36]), jnp.reshape(S_00_B, [6])])
 
     # solution_B = solve_ivp(g_dot_B, (data.t[0], data.t[1]), g_0_B, method="RK45", t_eval=[data.t[0], data.t[1]], atol=1e-6)
-    # print(solution_B)
+    # print(array_to_latex_matrix(jnp.round(jnp.reshape(solution_B.y[0:6, 1],[6,1]), 10)))
+    # print(array_to_latex_matrix(jnp.round(jnp.reshape(solution_B.y[0:6, 1],[6,1]), 15)))
     # print(array_to_latex_matrix(jnp.round(jnp.reshape(solution_B.y[6:42, 1],[6,6]), 10)))
     # print(array_to_latex_matrix(jnp.round(jnp.reshape(solution_B.y[42:48, 1],[6,1]), 10)))
     # fmt: on
