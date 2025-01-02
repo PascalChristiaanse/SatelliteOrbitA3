@@ -240,7 +240,7 @@ def main():
         * np.linalg.norm(
             ref_sol[:, :-3] - [np.array(jnp.squeeze(x[:-3])) for x in x_hat], axis=1
         ),
-        name="Reference vs extended kalman",
+        name="Position difference",
         color="blue",
     )
     residual.add_line_plot(
