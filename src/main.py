@@ -180,8 +180,8 @@ def main():
     ).reshape(100, 3, -1)
     r_gps = [r_gps[i][:, ~np.all(r_gps[i] == 0, axis=0)] for i in range(r_gps.shape[0])]
     # print(r_gps[0][:,0])
-    sigma_a = 0.0 #1 # these look like random guesses but i tried 5 orders of magnitude. This is honestly just the best one  i could find
-    sigma_b = 0.00005 #1
+    sigma_a = 0.0  # 1 # these look like random guesses but i tried 5 orders of magnitude. This is honestly just the best one  i could find
+    sigma_b = 0.00005  # 1
     Q = jnp.diag(jnp.array([*[sigma_a**2] * 3, *[sigma_b**2] * 3]))
     P = list([jnp.array(P_xx_meter / (1000**2)) + Q])
     R = list([pow(0.003, 2) * jnp.identity(len(z_bar[0]))])
@@ -254,8 +254,7 @@ def main():
         color="green",
         secondary_y=True,
     )
-    
-    
+
     # print(
     #     "Deltas epoch 5 - Position: ",
     #     f"{1000 * norm(ref_sol[5][0:3] - x_hat[5][0:3].reshape(3)):.10f}",
@@ -288,13 +287,14 @@ def main():
     #     f"{1000 * norm(ref_sol[29][3:6] - x_hat[29][3:6].reshape(3)):.10f}",
     #     " [m/s]",
     # )
-
+    # fmt: off
     print("\hat x_10 = ", array_to_latex_matrix(x_hat[9].reshape([1,6]), 6))
     print("\hat x_20 = ", array_to_latex_matrix(x_hat[19].reshape([1,6]), 6))
     print("\hat x_30 = ", array_to_latex_matrix(x_hat[29].reshape([1,6]), 6))
 
     P = jnp.stack(P)
     from StatisticsPlotter import StatisticsPlotter
+
     stat_pltr = StatisticsPlotter()
     stat_pltr.add_line_plot(data.t - data.t[0], jnp.sqrt(P[:,0,0])*1000, name="Sigma x", color="red")
     stat_pltr.add_line_plot(data.t - data.t[0], jnp.sqrt(P[:,1,1])*1000, name="Sigma y", color="green")
@@ -311,15 +311,15 @@ def main():
     
     # residual_pltr.add_line_plot(data.t - data.t[0], sig_r, name="Sigma r", color="orange", secondary_y=True)
     # residual_pltr.add_line_plot(data.t - data.t[0], sig_v, name="Sigma v", color="purple")
-    
+
     residual_pltr.plot()
     stat_pltr.plot()
-    
+    # fmt: on
     # Part G
-    #For task f, calculate for every epoch the RMS of the observation residuals 
-    # $\bar e_k = \Delta \bar z_k - H_k \Delta \hat x_k$ where $\Delta \hat x_k = K \Delta \bar z_k$ in the Kalman filter, 
+    # For task f, calculate for every epoch the RMS of the observation residuals
+    # $\bar e_k = \Delta \bar z_k - H_k \Delta \hat x_k$ where $\Delta \hat x_k = K \Delta \bar z_k$ in the Kalman filter,
     # compare the size to the position errors δr, and interpret the comparison. (10 points)
-    
+
     dx_hat = []
     e_bar = []
     rms_e_bar = []
@@ -327,18 +327,11 @@ def main():
         dx_hat.append(K[i] @ dz_bar[i])
         e_bar.append(dz_bar[i] - H[i] @ dx_hat[i])
         rms_e_bar.append(
-            jnp.sqrt(
-                jnp.sum(jnp.pow(1000*e_bar[i], 2)/(e_bar[i].shape[0]))
-            )
+            jnp.sqrt(jnp.sum(jnp.pow(1000 * e_bar[i], 2) / (e_bar[i].shape[0])))
         )
-        
+
     rms_pltr = ResidualPlotter()
-    rms_pltr.add_line_plot(
-        data.t - data.t[0],
-        rms_e_bar,
-        "RMS of e hat",
-        "green"
-    )
+    rms_pltr.add_line_plot(data.t - data.t[0], rms_e_bar, "RMS of e hat", "green")
     rms_pltr.add_line_plot(
         data.t - data.t[0],
         1000
@@ -348,8 +341,8 @@ def main():
         name="Position difference",
         color="blue",
     )
-    rms_pltr.plot()    
-    
+    rms_pltr.plot()
+
 
 if __name__ == "__main__":
     main()
