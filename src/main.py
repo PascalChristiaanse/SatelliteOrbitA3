@@ -142,10 +142,9 @@ def main():
     S_00_B = jnp.zeros([6,1])
     g_0_B = jnp.concat([x_bar_0_B, jnp.reshape(phi_00_B, [36]), jnp.reshape(S_00_B, [6])])
 
-    # solution_B = solve_ivp(g_dot_B, (data.t[0], data.t[1]), g_0_B, method="RK45", t_eval=[data.t[0], data.t[1]], atol=1e-6)
-    # print(array_to_latex_matrix(jnp.round(jnp.reshape(solution_B.y[0:6, 1],[6,1]), 10)))
-    # print(array_to_latex_matrix(jnp.round(jnp.reshape(solution_B.y[0:6, 1],[6,1]), 15)))
-    # print(array_to_latex_matrix(jnp.round(jnp.reshape(solution_B.y[6:42, 1],[6,6]), 10)))
+    solution_B = solve_ivp(g_dot_B, (data.t[0], data.t[1]), g_0_B, method="RK45", t_eval=[data.t[0], data.t[1]], atol=1e-6)
+    print("\\bar x_1 = ", array_to_latex_matrix(jnp.reshape(solution_B.y[0:6, 1],[6,1]), 6))
+    print("\\phi_{1,0} =", array_to_latex_matrix(jnp.reshape(solution_B.y[6:42, 1],[6,6]), 10))
     # print(array_to_latex_matrix(jnp.round(jnp.reshape(solution_B.y[42:48, 1],[6,1]), 10)))
     # fmt: on
 
@@ -181,8 +180,8 @@ def main():
     ).reshape(100, 3, -1)
     r_gps = [r_gps[i][:, ~np.all(r_gps[i] == 0, axis=0)] for i in range(r_gps.shape[0])]
     # print(r_gps[0][:,0])
-    sigma_a = 1 # these look like random guesses but i tried 5 orders of magnitude. This is honestly just the best one  i could find
-    sigma_b = 1
+    sigma_a = 0.0 #1 # these look like random guesses but i tried 5 orders of magnitude. This is honestly just the best one  i could find
+    sigma_b = 0.00005 #1
     Q = jnp.diag(jnp.array([*[pow(sigma_a,2)]*3, *[pow(sigma_b, 2)]*3]))
     P = list([jnp.array(P_xx)+Q])
     R = list([0.009 * jnp.identity(len(z_bar[0]))])
@@ -255,33 +254,102 @@ def main():
         color="green",
         secondary_y=True,
     )
-    # residual.plot()
+    
+    
+    # print(
+    #     "Deltas epoch 5 - Position: ",
+    #     f"{1000 * norm(ref_sol[5][0:3] - x_hat[5][0:3].reshape(3)):.10f}",
+    #     " [m],",
+    #     "Velocity:",
+    #     f"{1000 * norm(ref_sol[5][3:6] - x_hat[5][3:6].reshape(3)):.10f}",
+    #     " [m/s]",
+    # )
+    # print(
+    #     "Deltas epoch 9 - Position: ",
+    #     f"{1000 * norm(ref_sol[9][0:3] - x_hat[9][0:3].reshape(3)):.10f}",
+    #     " [m],",
+    #     "Velocity:",
+    #     f"{1000 * norm(ref_sol[9][3:6] - x_hat[9][3:6].reshape(3)):.10f}",
+    #     " [m/s]",
+    # )
+    # print(
+    #     "Deltas epoch 19 - Position: ",
+    #     f"{1000 * norm(ref_sol[19][0:3] - x_hat[19][0:3].reshape(3)):.10f}",
+    #     " [m],",
+    #     "Velocity:",
+    #     f"{1000 * norm(ref_sol[19][3:6] - x_hat[19][3:6].reshape(3)):.10f}",
+    #     " [m/s]",
+    # )
+    # print(
+    #     "Deltas epoch 29 - Position: ",
+    #     f"{1000 * norm(ref_sol[29][0:3] - x_hat[29][0:3].reshape(3)):.10f}",
+    #     " [m],",
+    #     "Velocity:",
+    #     f"{1000 * norm(ref_sol[29][3:6] - x_hat[29][3:6].reshape(3)):.10f}",
+    #     " [m/s]",
+    # )
 
-    print(
-        "Deltas epoch 9 - Position: ",
-        f"{1000 * norm(ref_sol[9][0:3] - x_hat[9][0:3].reshape(3)):.10g}",
-        " [m],",
-        "Velocity:",
-        f"{1000 * norm(ref_sol[9][3:6] - x_hat[9][3:6].reshape(3)):.10g}",
-        " [m/s]",
-    )
-    print(
-        "Deltas epoch 19 - Position: ",
-        f"{1000 * norm(ref_sol[19][0:3] - x_hat[19][0:3].reshape(3)):.10g}",
-        " [m],",
-        "Velocity:",
-        f"{1000 * norm(ref_sol[19][3:6] - x_hat[19][3:6].reshape(3)):.10g}",
-        " [m/s]",
-    )
-    print(
-        "Deltas epoch 29 - Position: ",
-        f"{1000 * norm(ref_sol[29][0:3] - x_hat[29][0:3].reshape(3)):.10g}",
-        " [m],",
-        "Velocity:",
-        f"{1000 * norm(ref_sol[29][3:6] - x_hat[29][3:6].reshape(3)):.10g}",
-        " [m/s]",
-    )
+    print("\hat x_10 = ", array_to_latex_matrix(x_hat[9].reshape([1,6]), 6))
+    print("\hat x_20 = ", array_to_latex_matrix(x_hat[19].reshape([1,6]), 6))
+    print("\hat x_30 = ", array_to_latex_matrix(x_hat[29].reshape([1,6]), 6))
 
+    P = jnp.stack(P)
+    from StatisticsPlotter import StatisticsPlotter
+    stat_pltr = StatisticsPlotter()
+    stat_pltr.add_line_plot(data.t - data.t[0], jnp.sqrt(P[:,0,0])*1000, name="Sigma x", color="red")
+    stat_pltr.add_line_plot(data.t - data.t[0], jnp.sqrt(P[:,1,1])*1000, name="Sigma y", color="green")
+    stat_pltr.add_line_plot(data.t - data.t[0], jnp.sqrt(P[:,2,2])*1000, name="Sigma z", color="blue")
+    stat_pltr.add_line_plot(data.t - data.t[0], [len(x) for x in z_bar], name="measurements", color="pink")
+    
+    stat_pltr.add_line_plot(data.t - data.t[0], jnp.sqrt(P[:,3,3])*1000, name="Sigma vx", color="red", secondary_y=True)
+    stat_pltr.add_line_plot(data.t - data.t[0], jnp.sqrt(P[:,4,4])*1000, name="Sigma vy", color="green", secondary_y=True)
+    stat_pltr.add_line_plot(data.t - data.t[0], jnp.sqrt(P[:,5,5])*1000, name="Sigma vz", color="blue", secondary_y=True)
+    sig_r = norm(jnp.stack([jnp.sqrt(P[:,0,0])*1000, jnp.sqrt(P[:,1,1])*1000, jnp.sqrt(P[:,2,2])*1000]), axis=0)
+    sig_v = norm(jnp.stack([jnp.sqrt(P[:,3,3])*1000, jnp.sqrt(P[:,4,4])*1000, jnp.sqrt(P[:,5,5])*1000]), axis=0)
+    stat_pltr.add_line_plot(data.t - data.t[0], sig_r, name="Sigma r", color="orange")
+    stat_pltr.add_line_plot(data.t - data.t[0], sig_v, name="Sigma v", color="purple", secondary_y=True)
+    
+    # residual_pltr.add_line_plot(data.t - data.t[0], sig_r, name="Sigma r", color="orange", secondary_y=True)
+    # residual_pltr.add_line_plot(data.t - data.t[0], sig_v, name="Sigma v", color="purple")
+    
+    residual_pltr.plot()
+    stat_pltr.plot()
+    
+    # Part G
+    #For task f, calculate for every epoch the RMS of the observation residuals 
+    # $\bar e_k = \Delta \bar z_k - H_k \Delta \hat x_k$ where $\Delta \hat x_k = K \Delta \bar z_k$ in the Kalman filter, 
+    # compare the size to the position errors δr, and interpret the comparison. (10 points)
+    
+    dx_hat = []
+    e_bar = []
+    rms_e_bar = []
+    for i in range(len(data.t)):
+        dx_hat.append(K[i] @ dz_bar[i])
+        e_bar.append(dz_bar[i] - H[i] @ dx_hat[i])
+        rms_e_bar.append(
+            jnp.sqrt(
+                jnp.sum(jnp.pow(1000*e_bar[i], 2)/(e_bar[i].shape[0]))
+            )
+        )
+        
+    rms_pltr = ResidualPlotter()
+    rms_pltr.add_line_plot(
+        data.t - data.t[0],
+        rms_e_bar,
+        "RMS of e hat",
+        "green"
+    )
+    rms_pltr.add_line_plot(
+        data.t - data.t[0],
+        1000
+        * np.linalg.norm(
+            ref_sol[:, :-3] - [np.array(jnp.squeeze(x[:-3])) for x in x_hat], axis=1
+        ),
+        name="Position difference",
+        color="blue",
+    )
+    rms_pltr.plot()    
+    
 
 if __name__ == "__main__":
     main()
