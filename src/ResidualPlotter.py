@@ -53,7 +53,7 @@ class ResidualPlotter:
             xaxis_title="Time [s - 959300000]",
             yaxis_title="Difference [m]",
             # xaxis2_title="Time (Modified Julian date)",
-            yaxis2_title="Distance [m]",
+            yaxis2_title="Difference [m/s]",
             # xaxis3_title="Time (Modified Julian date)",
             # yaxis3_title="Longitude Delta",
             xaxis=dict(tickformat=".1f",tickfont = dict(size=30)),
