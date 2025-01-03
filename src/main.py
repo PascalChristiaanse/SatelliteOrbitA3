@@ -114,8 +114,8 @@ def main():
         ]
     )
 
-    # print("P_yy", P_yy)
-    # print("P_xx", P_xx)
+    print("P_yy", array_to_latex_matrix(P_yy))
+    print("P_xx", array_to_latex_matrix(P_xx_meter))
 
     # Part B
 
@@ -288,9 +288,9 @@ def main():
     #     " [m/s]",
     # )
     # fmt: off
-    print("\hat x_10 = ", array_to_latex_matrix(x_hat[9].reshape([1,6]), 6))
-    print("\hat x_20 = ", array_to_latex_matrix(x_hat[19].reshape([1,6]), 6))
-    print("\hat x_30 = ", array_to_latex_matrix(x_hat[29].reshape([1,6]), 6))
+    print("\hat x_10 = ", array_to_latex_matrix(x_hat[9].reshape([1, 6]), 6))
+    print("\hat x_20 = ", array_to_latex_matrix(x_hat[19].reshape([1, 6]), 6))
+    print("\hat x_30 = ", array_to_latex_matrix(x_hat[29].reshape([1, 6]), 6))
 
     P = jnp.stack(P)
     from StatisticsPlotter import StatisticsPlotter
