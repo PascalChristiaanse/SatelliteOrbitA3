@@ -101,8 +101,9 @@ def main():
 
     # Part A
     # Define covariance matrices
-    P_yy = 9.0 * jnp.identity(3)
-    P_xx = np.array(
+    P_yy = pow(3 / 1000, 2) * jnp.identity(3)
+
+    P_xx_meter = np.array(
         [
             [4, 0, 0, 0.14, 0, 0],
             [0, 4, 0, 0, 0.14, 0],
@@ -181,9 +182,9 @@ def main():
     # print(r_gps[0][:,0])
     sigma_a = 0.0 #1 # these look like random guesses but i tried 5 orders of magnitude. This is honestly just the best one  i could find
     sigma_b = 0.00005 #1
-    Q = jnp.diag(jnp.array([*[pow(sigma_a,2)]*3, *[pow(sigma_b, 2)]*3]))
-    P = list([jnp.array(P_xx)+Q])
-    R = list([0.009 * jnp.identity(len(z_bar[0]))])
+    Q = jnp.diag(jnp.array([*[sigma_a**2] * 3, *[sigma_b**2] * 3]))
+    P = list([jnp.array(P_xx_meter / (1000**2)) + Q])
+    R = list([pow(0.003, 2) * jnp.identity(len(z_bar[0]))])
 
     dz_bar = list([z_bar[0] - h(x_bar[0], r_gps[0])])
     H = list([H_xn(x_bar[0], r_gps[0])])
@@ -215,7 +216,7 @@ def main():
         # So nothing
 
         # Update with observations
-        R.append(0.009 * jnp.identity(len(z_bar[i + 1])))
+        R.append(pow(0.003, 2) * jnp.identity(len(z_bar[i + 1])))
         H.append(H_xn(x_bar[i + 1], r_gps[i + 1]))
         dz_bar.append(z_bar[i + 1] - h(x_bar[i + 1], r_gps[i + 1]))
         K.append(
