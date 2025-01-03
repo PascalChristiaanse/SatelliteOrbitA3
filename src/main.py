@@ -31,18 +31,17 @@ from OrbitPlotter import OrbitPlotter
 
 def array_to_latex_matrix(arr, signif=10):
     """
-    Convert a NumPy array to a LaTeX matrix with specified significant digits.
+    Convert a NumPy array to a LaTeX matrix with exactly 10 decimal places.
 
     Parameters:
-    array (numpy.ndarray): The input NumPy array.
-    significant_digits (int): Number of significant digits to format the numbers.
+    arr (numpy.ndarray): The input NumPy array.
 
     Returns:
-    str: A string representing the LaTeX matrix.
+    str: A string representing the LaTeX matrix with 10 decimal places.
     """
 
-    # Format the array into a LaTeX-compatible string
-    formatter = f"{{:.{signif}g}}"
+    # Format the array into a LaTeX-compatible string with fixed-point notation
+    formatter = f"{{:.{signif}f}}"
     rows = []
     for row in arr:
         formatted_row = " & ".join([formatter.format(num) for num in row])
