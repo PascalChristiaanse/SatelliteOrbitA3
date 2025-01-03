@@ -234,8 +234,8 @@ def main():
 
     from ResidualPlotter import ResidualPlotter
 
-    residual = ResidualPlotter()
-    residual.add_line_plot(
+    residual_pltr = ResidualPlotter()
+    residual_pltr.add_line_plot(
         data.t - data.t[0],
         1000
         * np.linalg.norm(
@@ -244,7 +244,7 @@ def main():
         name="Position difference",
         color="blue",
     )
-    residual.add_line_plot(
+    residual_pltr.add_line_plot(
         data.t - data.t[0],
         1000
         * np.linalg.norm(
